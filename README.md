@@ -41,25 +41,25 @@ The token management API is protected by a separate **admin secret** declared in
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                  FastAPI Application                │
-│                                                     │
+┌────────────────────────────────────────────────────┐
+│                FastAPI Application                 │
+│                                                    │
 │  ┌──────────────┐   ┌──────────────────────────┐   │
-│  │  /api/tokens │   │     /api/sessions         │   │
-│  │  (admin auth)│   │ (client API-token auth)   │   │
+│  │  /api/tokens │   │     /api/sessions        │   │
+│  │  (admin auth)│   │ (client API-token auth)  │   │
 │  └──────────────┘   └──────────────────────────┘   │
-│                                                     │
-│  ┌──────────────────────────────────────────────┐   │
-│  │   /ws/session/{session_id}  (WebSocket)       │   │
-│  │   client API-token required as query param   │   │
-│  └──────────────────────────────────────────────┘   │
-│                                                     │
+│                                                    │
+│  ┌──────────────────────────────────────────────┐  │
+│  │   /ws/session/{session_id}  (WebSocket)      │  │
+│  │   client API-token required as query param   │  │
+│  └──────────────────────────────────────────────┘  │
+│                                                    │
 │  ┌────────────┐  ┌──────────────┐  ┌────────────┐  │
 │  │ TokenStore │  │ SessionMgr   │  │ Browser-   │  │
 │  │ (TinyDB)   │  │ (in-memory)  │  │ Controller │  │
 │  └────────────┘  └──────────────┘  │ (Playwright│  │
 │                                    └────────────┘  │
-└─────────────────────────────────────────────────────┘
+└────────────────────────────────────────────────────┘
          ▲                             ▲
          │ admin HTTP                  │ client WebSocket / HTTP
          │                             │
@@ -265,7 +265,7 @@ repository.yaml      ← repository manifest (repo root)
 
 ### Installation
 
-1. In Home Assistant, go to **Settings → Add-ons → Add-on Store**.
+1. In Home Assistant, go to **Settings → Apps → Install App**.
 2. Click ⋮ (top-right) → **Repositories**.
 3. Paste your GitHub repository URL and click **Add**.
 4. Find **BrowserRelay** in the store and click **Install**.
