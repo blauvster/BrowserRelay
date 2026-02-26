@@ -1,0 +1,52 @@
+[tool.poetry]
+name = "browser-relay"
+version = "0.1.0"
+description = "Interactive browser streaming server with strong client authentication via FastAPI, Playwright, and WebSocket."
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+license = "MIT"
+packages = [{ include = "browser_relay" }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = "^0.111.0"
+uvicorn = { extras = ["standard"], version = "^0.29.0" }
+playwright = "^1.44.0"
+python-dotenv = "^1.0.1"
+pydantic = "^2.7.1"
+pydantic-settings = "^2.2.1"
+# TinyDB gives a simple file-based JSON store that is easy to swap for SQLAlchemy later
+tinydb = "^4.8.0"
+# Cryptographically-strong token generation
+python-jose = { extras = ["cryptography"], version = "^3.3.0" }
+# aiofiles enables non-blocking file I/O for screenshot routes
+aiofiles = "^23.2.1"
+# httpx is used by FastAPI's TestClient for integration tests
+httpx = "^0.27.0"
+pillow = "^12.1.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2.0"
+pytest-asyncio = "^0.23.6"
+ruff = "^0.4.4"
+mypy = "^1.10.0"
+
+[tool.poetry.scripts]
+# Run with: poetry run serve
+serve = "browser_relay.main:run"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.mypy]
+python_version = "3.10"
+strict = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

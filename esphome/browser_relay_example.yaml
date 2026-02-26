@@ -1,0 +1,176 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# BrowserRelay ESPHome Example
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Hardware assumptions
+#   - ESP32 (any variant with enough RAM – ESP32-S3 recommended for display use)
+#   - Optional: SPI display wired to the GPIO pins below (e.g. ILI9341 2.8")
+#
+# To flash:  esphome run browser_relay_example.yaml
+#
+# ─────────────────────────────────────────────────────────────────────────────
+
+esphome:
+  name: browser-relay-client
+  friendly_name: BrowserRelay Client
+  # Platform libraries required by the component.
+  libraries:
+    - links2004/WebSockets@2.4.1
+    - bblanchon/ArduinoJson@>=6.21
+
+esp32:
+  board: esp32dev          # Change to your board (esp32s3box, etc.)
+  framework:
+    type: arduino
+
+# ── Network ──────────────────────────────────────────────────────────────────
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "BrowserRelay Fallback"
+    password: "changeme"
+
+captive_portal:
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+# ── Logging ──────────────────────────────────────────────────────────────────
+
+logger:
+  level: DEBUG
+
+# ── External component (local path) ──────────────────────────────────────────
+
+external_components:
+  - source:
+      type: local
+      # Adjust this path if your ESPHome config file lives somewhere else.
+      path: components
+    components: [browser_relay]
+
+# ── BrowserRelay component ───────────────────────────────────────────────────
+
+browser_relay:
+  # IP/hostname of the machine running BrowserRelay.
+  server: "192.168.1.100"
+  port: 8000
+
+  # Client API token created in the manager UI.
+  # Store in secrets.yaml: br_token: "br_xxxxxxxxxxxx"
+  token: !secret br_token
+
+  # URL navigated to when a new session is created.
+  initial_url: "https://example.com"
+
+  # Viewport the headless browser runs at.
+  width: 1280
+  height: 800
+
+  # Automatically create a session and reconnect on drop.
+  auto_connect: true
+
+  # Optional: publish the browser's current URL.
+  current_url:
+    name: "Browser URL"
+
+  # Optional: publish connection status.
+  status:
+    name: "Browser Status"
+
+  # Optional: receive JPEG screenshot frames.
+  # 'data' is a uint8_t* pointer, 'length' is the byte count.
+  # Use a JPEGDEC-based display lambda to draw it; see below.
+  on_screenshot:
+    - lambda: |-
+        // Example: log frame size.
+        ESP_LOGI("screenshot", "Frame received: %u bytes", (unsigned)length);
+
+        // ── Display integration (ILI9341 example with JPEGDEC) ────────────
+        // Uncomment and adjust if you have a display attached.
+        //
+        // #include <JPEGDEC.h>
+        // static JPEGDEC jpeg;
+        // if (jpeg.openRAM(data, length,
+        //     [](JPEGDRAW *d) -> int {
+        //       id(my_display).draw_pixels_at(
+        //           d->x, d->y, d->iWidth, d->iHeight,
+        //           (Color*)d->pPixels
+        //       );
+        //       return 1;
+        //     })) {
+        //   jpeg.decode(0, 0, 0);
+        //   jpeg.close();
+        // }
+
+# ── Binary sensors / physical buttons ────────────────────────────────────────
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO0       # BOOT button on most dev boards
+      inverted: true
+      mode: INPUT_PULLUP
+    name: "Boot Button"
+    on_press:
+      # Navigate to a URL on button press.
+      - browser_relay.navigate:
+          url: "https://www.google.com"
+
+  - platform: gpio
+    pin:
+      number: GPIO35      # second physical button (adjust as needed)
+      inverted: true
+      mode: INPUT_PULLUP
+    name: "Action Button"
+    on_press:
+      # Click the centre of the browser viewport.
+      - browser_relay.click:
+          x: 640
+          y: 400
+
+# ── Example automations ───────────────────────────────────────────────────────
+
+# Switch that connects/disconnects the browser session.
+switch:
+  - platform: template
+    name: "Browser Session"
+    optimistic: true
+    turn_on_action:
+      - browser_relay.connect: {}
+    turn_off_action:
+      - browser_relay.disconnect: {}
+
+# ── Optional: SPI display (ILI9341, portrait 240×320) ────────────────────────
+# Uncomment the spi / display blocks and add JPEGDEC library to decode frames.
+
+# spi:
+#   clk_pin: GPIO18
+#   mosi_pin: GPIO23
+
+# display:
+#   - platform: ili9xxx
+#     model: ILI9341
+#     id: my_display
+#     cs_pin: GPIO5
+#     dc_pin: GPIO2
+#     reset_pin: GPIO4
+#     rotation: 0
+#     lambda: |-
+#       // Display is updated via the on_screenshot callback above.
+#       // Nothing needs to be drawn here unless you want a static UI overlay.
+
+# ── Secrets template (secrets.yaml) ──────────────────────────────────────────
+#
+# wifi_ssid: "YourSSID"
+# wifi_password: "YourWiFiPassword"
+# api_encryption_key: "<32-byte base64 key from esphome generate>"
+# ota_password: "your-ota-password"
+# br_token: "br_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"

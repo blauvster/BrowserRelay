@@ -1,0 +1,11 @@
+# build.yaml – extended build options for the BrowserRelay HA add-on.
+#
+# We use Microsoft's official Playwright Python image as the base rather than
+# the default HA Alpine images because Chromium requires Debian/Ubuntu system
+# libraries that are not available on Alpine.
+#
+# Only amd64 and aarch64 are provided; Playwright does not publish images for
+# armhf, armv7, or i386.
+build_from:
+  amd64: mcr.microsoft.com/playwright/python:v1.44.0-jammy
+  aarch64: mcr.microsoft.com/playwright/python:v1.44.0-jammy-arm64

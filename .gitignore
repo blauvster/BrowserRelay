@@ -1,0 +1,62 @@
+# ── Python ───────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# ── Virtual environments ──────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── Poetry ───────────────────────────────────
+# poetry.lock is intentionally NOT ignored for applications
+# (commit it for reproducible installs)
+
+# ── Secrets & credentials ─────────────────────
+.env
+*.pem
+*.key
+*.cert
+*.crt
+secrets/
+
+# ── Data / persistent state ───────────────────
+data/
+*.json
+
+# ── Playwright ───────────────────────────────
+# Browser binaries are downloaded per-environment; do not commit them.
+ms-playwright/
+
+# ── IDE / editor ─────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Test / coverage artifacts ─────────────────
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# ── Logs ─────────────────────────────────────
+*.log
+logs/
+
+# ── Miscellaneous ───────────────────────────
+.sync-exclude.lst

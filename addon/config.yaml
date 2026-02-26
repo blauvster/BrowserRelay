@@ -1,0 +1,50 @@
+name: "BrowserRelay"
+version: "0.1.0"
+slug: browser_relay
+description: >-
+  Headless Chromium browser streaming server. Authenticated clients control
+  a browser via REST and WebSocket and receive a live JPEG screenshot stream.
+url: "https://github.com/yourusername/browser-relay"
+arch:
+  - amd64
+  - aarch64
+startup: application
+boot: auto
+
+# ── Networking ────────────────────────────────────────────────────────────────
+ports:
+  8000/tcp: 8000
+ports_description:
+  8000/tcp: "BrowserRelay REST + WebSocket API"
+
+# ── Ingress (HA sidebar) ──────────────────────────────────────────────────────
+ingress: true
+ingress_port: 8000
+ingress_stream: true   # enables WebSocket passthrough through the HA proxy
+panel_icon: mdi:monitor-screenshot
+
+# ── Chromium sandbox requirements ─────────────────────────────────────────────
+# SYS_ADMIN is required for the Chromium sandbox inside the container.
+privileged:
+  - SYS_ADMIN
+host_ipc: true         # prevents shared-memory (shm) exhaustion under load
+apparmor: false        # disable AppArmor – Chromium syscalls would be blocked
+
+# ── Persistent storage ────────────────────────────────────────────────────────
+# /data is always mounted read-write by the Supervisor.
+# We point TOKEN_DB_PATH at /data/tokens.json in run.sh.
+
+# ── User-configurable options ─────────────────────────────────────────────────
+options:
+  admin_secret: ""
+  session_timeout_seconds: 3600
+  screenshot_interval_seconds: 0.1
+  screenshot_quality: 75
+  log_level: "info"
+
+schema:
+  admin_secret: password
+  session_timeout_seconds: "int(60,86400)"
+  screenshot_interval_seconds: "float(0.05,5.0)"
+  screenshot_quality: "int(1,100)"
+  log_level: "list(debug|info|warning|error)"

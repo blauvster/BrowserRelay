@@ -1,0 +1,44 @@
+services:
+  browser-relay:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: browser-relay:latest
+    container_name: browser-relay
+
+    ports:
+      - "8000:8000"
+
+    # Persist the TinyDB token store between restarts.
+    volumes:
+      - ./data:/app/data
+
+    environment:
+      # ── Required ──────────────────────────────────────────────────────────
+      # Override this with a long random string before deploying.
+      ADMIN_SECRET: ${ADMIN_SECRET:-change-me}
+
+      # ── Optional (shown with defaults) ───────────────────────────────────
+      HOST: "0.0.0.0"
+      PORT: "8000"
+      LOG_LEVEL: "info"
+      SESSION_TIMEOUT_SECONDS: "3600"
+      SCREENSHOT_INTERVAL_SECONDS: "0.1"
+      SCREENSHOT_QUALITY: "75"
+      # Keep headed mode off – no display server is available in the container.
+      PLAYWRIGHT_HEADED: "false"
+
+    # Playwright / Chromium needs a few extra kernel capabilities.
+    # --ipc=host prevents shared-memory exhaustion under heavy screenshot load.
+    ipc: host
+    security_opt:
+      - seccomp=unconfined   # required for Chromium sandbox in some environments
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

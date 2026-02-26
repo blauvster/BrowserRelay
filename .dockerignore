@@ -1,0 +1,54 @@
+# Version control
+.git
+.gitignore
+
+# Python caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Poetry artefacts (not needed in image)
+.poetry/
+
+# Test & CI
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Local config / secrets
+.env
+*.env
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Docker itself
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# ESPHome (not part of the server image)
+esphome/
+
+# Local data (mounted as a volume at runtime)
+data/
+
+# README.md is intentionally NOT excluded – pyproject.toml references it
+# and Poetry needs it during `poetry install`.

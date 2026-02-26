@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BrowserRelay – Demo Client</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Top toolbar ──────────────────────────────────────────────────── */
+    #toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      background: #1a1d27;
+      border-bottom: 1px solid #2d3148;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+
+    #toolbar label { font-size: .75rem; color: #94a3b8; white-space: nowrap; }
+
+    #toolbar input, #toolbar select {
+      background: #252837;
+      border: 1px solid #3b4162;
+      border-radius: 6px;
+      color: #e2e8f0;
+      padding: 5px 9px;
+      font-size: .825rem;
+      outline: none;
+    }
+    #toolbar input:focus, #toolbar select:focus { border-color: #6366f1; }
+
+    #urlInput    { flex: 1; min-width: 200px; }
+    #widthInput,
+    #heightInput  { width: 68px; }
+    #dispWidthInput,
+    #dispHeightInput { width: 68px; }
+
+    .toolbar-sep {
+      width: 1px;
+      align-self: stretch;
+      background: #2d3148;
+      margin: 0 2px;
+      flex-shrink: 0;
+    }
+
+    button {
+      padding: 6px 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: .825rem;
+      font-weight: 600;
+      transition: opacity .15s;
+    }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    #connectBtn  { background: #6366f1; color: #fff; }
+    #connectBtn:not(:disabled):hover { background: #818cf8; }
+    #disconnectBtn { background: #dc2626; color: #fff; }
+    #disconnectBtn:not(:disabled):hover { background: #ef4444; }
+
+    /* ── Status bar ───────────────────────────────────────────────────── */
+    #statusBar {
+      font-size: .75rem;
+      padding: 4px 14px;
+      background: #141622;
+      border-bottom: 1px solid #1e2235;
+      color: #64748b;
+      flex-shrink: 0;
+    }
+    #statusBar span { color: #a5b4fc; font-weight: 600; }
+
+    /* ── Main content ─────────────────────────────────────────────────── */
+    #main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── Screen viewport ──────────────────────────────────────────────── */
+    #screenWrap {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      background: #090b12;
+    }
+
+    #screen {
+      display: block;
+      cursor: crosshair;
+      /* The image is shown at natural size; the wrapper scrolls. */
+    }
+    #screen.hidden { display: none; }
+
+    #placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #334155;
+      font-size: 1.1rem;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* ── Panel resize handle ─────────────────────────────────────────── */
+    #panelResizer {
+      width: 5px;
+      flex-shrink: 0;
+      cursor: col-resize;
+      background: #1e2235;
+      transition: background .15s;
+    }
+    #panelResizer:hover,
+    #panelResizer.dragging { background: #6366f1; }
+
+    /* ── Side panel (keyboard / events) ──────────────────────────────── */
+    #panel {
+      width: 240px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 12px;
+      background: #131520;
+      border-left: 1px solid #1e2235;
+      overflow-y: auto;
+    }
+
+    #panel h3 { font-size: .8rem; color: #64748b; text-transform: uppercase; letter-spacing: .05em; }
+
+    #typeInput {
+      width: 100%;
+      background: #1e2235;
+      border: 1px solid #2d3455;
+      border-radius: 6px;
+      color: #e2e8f0;
+      padding: 6px 8px;
+      font-size: .825rem;
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    #sendTypeBtn { width: 100%; background: #0ea5e9; color: #fff; }
+    #sendTypeBtn:not(:disabled):hover { background: #38bdf8; }
+
+    #eventLog {
+      flex: 1;
+      overflow-y: auto;
+      font-size: .7rem;
+      font-family: monospace;
+      color: #475569;
+      background: #0f1117;
+      border: 1px solid #1e2235;
+      border-radius: 6px;
+      padding: 6px;
+      min-height: 120px;
+    }
+    #eventLog div { margin-bottom: 2px; }
+    #eventLog .sent  { color: #6366f1; }
+    #eventLog .recv  { color: #22c55e; }
+    #eventLog .error { color: #ef4444; }
+    #eventLog .info  { color: #64748b; }
+
+    /* ── Login overlay ────────────────────────────────────────────────── */
+    #loginOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(9,11,18,.88);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    #loginOverlay.hidden { display: none; }
+
+    .login-card {
+      background: #181b27;
+      border: 1px solid #2d3148;
+      border-radius: 14px;
+      padding: 32px 36px;
+      width: 380px;
+      max-width: 94vw;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.6);
+    }
+    .login-card h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #a5b4fc;
+      letter-spacing: .03em;
+    }
+    .login-card h2 small {
+      display: block;
+      font-size: .78rem;
+      font-weight: 400;
+      color: #64748b;
+      margin-top: 3px;
+    }
+    .login-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .login-field label {
+      font-size: .75rem;
+      color: #94a3b8;
+    }
+    .login-field input {
+      background: #252837;
+      border: 1px solid #3b4162;
+      border-radius: 7px;
+      color: #e2e8f0;
+      padding: 9px 11px;
+      font-size: .88rem;
+      outline: none;
+      width: 100%;
+    }
+    .login-field input:focus { border-color: #6366f1; }
+    .login-error {
+      font-size: .78rem;
+      color: #ef4444;
+      min-height: 18px;
+    }
+    .login-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .login-actions button {
+      flex: 1;
+    }
+    #loginBtn { background: #6366f1; color: #fff; }
+    #loginBtn:hover { background: #818cf8; }
+    .login-note {
+      font-size: .72rem;
+      color: #475569;
+      text-align: center;
+    }
+    .login-note a { color: #6366f1; text-decoration: none; }
+    .login-note a:hover { text-decoration: underline; }
+
+    /* ── Auth pill in toolbar ─────────────────────────────────────────── */
+    #authPill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #1a2035;
+      border: 1px solid #2d3d62;
+      border-radius: 999px;
+      padding: 3px 10px 3px 6px;
+      font-size: .75rem;
+      color: #93c5fd;
+      margin-left: auto;
+    }
+    #authPill .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #22c55e;
+      flex-shrink: 0;
+    }
+    #authPill button {
+      background: none;
+      border: none;
+      color: #64748b;
+      font-size: .72rem;
+      cursor: pointer;
+      padding: 0 0 0 6px;
+      font-weight: 600;
+    }
+    #authPill button:hover { color: #ef4444; }
+  </style>
+</head>
+<body>
+
+<!-- ── Login overlay ────────────────────────────────────────────────────── -->
+<div id="loginOverlay" class="hidden">
+  <div class="login-card">
+    <h2>BrowserRelay
+      <small>Client – enter your API token to continue</small>
+    </h2>
+
+    <div class="login-field">
+      <label for="loginTokenInput">API Token</label>
+      <input id="loginTokenInput" type="password" placeholder="br_…" autocomplete="off"
+             onkeydown="if(event.key==='Enter') clientLogin()" />
+    </div>
+
+    <div class="login-error" id="loginError"></div>
+
+    <div class="login-actions">
+      <button id="loginBtn" onclick="clientLogin()">Sign In</button>
+    </div>
+
+    <div class="login-note">
+      Need a token? Ask your admin at
+      <a href="/manager.html" target="_blank">Manager →</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toolbar ──────────────────────────────────────────────────────────── -->
+<div id="toolbar">
+  <label>URL</label>
+  <input id="urlInput" type="text" value="https://example.com" placeholder="example.com" />
+
+  <label title="Browser viewport width">Browser W</label>
+  <input id="widthInput"  type="number" value="1280" min="320" max="3840" />
+  <label title="Browser viewport height">H</label>
+  <input id="heightInput" type="number" value="800"  min="200" max="2160" />
+
+  <div class="toolbar-sep"></div>
+  <label title="Screenshot is scaled to this resolution before sending">Display W</label>
+  <input id="dispWidthInput"  type="number" value="1280" min="160" max="3840" />
+  <label title="Display height">H</label>
+  <input id="dispHeightInput" type="number" value="800"  min="120" max="2160" />
+
+  <button id="connectBtn">Connect</button>
+  <button id="disconnectBtn" disabled>Close</button>
+
+  <!-- Auth state pill (shown when signed in) -->
+  <div id="authPill">
+    <span class="dot"></span>
+    <span id="authPillLabel">Signed in</span>
+    <button onclick="clientLogout()" title="Detach client – leaves the browser session running on the server">Sign out</button>
+  </div>
+</div>
+
+<!-- ── Status bar ───────────────────────────────────────────────────────── -->
+<div id="statusBar">Status: <span id="statusText">Disconnected</span></div>
+
+<!-- ── Main ─────────────────────────────────────────────────────────────── -->
+<div id="main">
+
+  <!-- Screenshot viewport -->
+  <div id="screenWrap">
+    <img id="screen" class="hidden" alt="browser stream" draggable="false" />
+    <div id="placeholder">No active session – press Connect to start.</div>
+  </div>
+
+  <!-- Side panel -->
+  <div id="panelResizer"></div>
+  <div id="panel">
+    <h3>Type text</h3>
+    <textarea id="typeInput" placeholder="Text to type into page…"></textarea>
+    <button id="sendTypeBtn" disabled>Send Text</button>
+
+    <h3>Event log</h3>
+    <div id="eventLog"></div>
+  </div>
+
+</div>
+
+<script src="app.js"></script>
+<script>
+(function () {
+  const PANEL_MIN = 160;
+  const PANEL_MAX = 600;
+  const LS_KEY    = "br_panel_width";
+  const resizer   = document.getElementById("panelResizer");
+  const panel     = document.getElementById("panel");
+
+  // Restore saved width.
+  const saved = parseInt(localStorage.getItem(LS_KEY), 10);
+  if (saved >= PANEL_MIN && saved <= PANEL_MAX) panel.style.width = saved + "px";
+
+  resizer.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    resizer.classList.add("dragging");
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    const startX     = e.clientX;
+    const startWidth = panel.getBoundingClientRect().width;
+
+    function onMove(e) {
+      // Panel is on the right, so dragging left (negative delta) widens it.
+      const delta = startX - e.clientX;
+      const width = Math.min(PANEL_MAX, Math.max(PANEL_MIN, startWidth + delta));
+      panel.style.width = width + "px";
+    }
+
+    function onUp() {
+      resizer.classList.remove("dragging");
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      localStorage.setItem(LS_KEY, parseInt(panel.style.width, 10));
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup",   onUp);
+    }
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup",   onUp);
+  });
+})();
+</script>
+</body>
+</html>
