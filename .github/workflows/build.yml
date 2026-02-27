@@ -1,0 +1,141 @@
+name: Build & Publish Images
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  # These are set dynamically in the jobs below.
+  # HA add-on image: ghcr.io/<owner>/browser-relay-<arch>:<version>
+  # Standalone image: ghcr.io/<owner>/browser-relay:<tag>
+
+jobs:
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job 1: Build the Home Assistant add-on image for each supported arch.
+  # The build context is the repo root so that COPY commands in addon/Dockerfile
+  # can reach browser_relay/, pyproject.toml, etc.
+  # ────────────────────────────────────────────────────────────────────────────
+  addon:
+    name: "HA Add-on (${{ matrix.arch }})"
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+            platform: linux/amd64
+            build_from: mcr.microsoft.com/playwright/python:v1.58.0-jammy
+          - arch: aarch64
+            runner: ubuntu-latest          # QEMU handles cross-compilation
+            platform: linux/arm64
+            build_from: mcr.microsoft.com/playwright/python:v1.58.0-jammy
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU (for cross-arch builds)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read add-on version from config.yaml
+        id: addon_version
+        run: |
+          VERSION=$(grep '^version:' addon/config.yaml | awk '{print $2}' | tr -d '"')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Determine image tags
+        id: meta
+        run: |
+          IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/browser-relay-${{ matrix.arch }}"
+          VERSION="${{ steps.addon_version.outputs.version }}"
+          # Always tag with the version; also tag latest on main branch / version tags
+          TAGS="${IMAGE}:${VERSION}"
+          if [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.ref }}" == refs/tags/* ]]; then
+            TAGS="${TAGS},${IMAGE}:latest"
+          fi
+          echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push add-on image
+        uses: docker/build-push-action@v6
+        with:
+          # ⚠ Build context = repo root so COPY paths in addon/Dockerfile resolve.
+          context: .
+          file: addon/Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          build-args: |
+            BUILD_FROM=${{ matrix.build_from }}
+            BUILD_ARCH=${{ matrix.arch }}
+            BUILD_VERSION=${{ steps.addon_version.outputs.version }}
+          cache-from: type=gha,scope=addon-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=addon-${{ matrix.arch }}
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job 2: Build the standalone Docker image (used with docker-compose).
+  # ────────────────────────────────────────────────────────────────────────────
+  standalone:
+    name: "Standalone Docker image"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/browser-relay
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push standalone image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=standalone
+          cache-to: type=gha,mode=max,scope=standalone
