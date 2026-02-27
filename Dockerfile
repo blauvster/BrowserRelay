@@ -5,13 +5,11 @@
 # its system-level dependencies are already present.  No separate
 # `playwright install --with-deps` step is required.
 # ──────────────────────────────────────────────────────────────────────────────
-FROM mcr.microsoft.com/playwright/python:v1.44.0-jammy
+FROM mcr.microsoft.com/playwright/python:v1.58.0-jammy
 
 # Keep Python output unbuffered so logs appear immediately in `docker logs`.
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    # Tell Playwright to use the pre-installed browsers in the base image.
-    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    PYTHONDONTWRITEBYTECODE=1
 
 WORKDIR /app
 
@@ -26,6 +24,11 @@ COPY pyproject.toml README.md ./
 # inside a container).
 RUN poetry config virtualenvs.create false && \
     poetry install --no-root --only main --no-interaction --no-ansi
+
+# ── Install Playwright browsers matching the installed Python package version.
+# Running this after `poetry install` ensures the browser binary always matches
+# the playwright package, even if the package version changes in the future.
+RUN playwright install chromium
 
 # ── Copy application source
 COPY browser_relay/ ./browser_relay/

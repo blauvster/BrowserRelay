@@ -7,5 +7,5 @@
 # Only amd64 and aarch64 are provided; Playwright does not publish images for
 # armhf, armv7, or i386.
 build_from:
-  amd64: mcr.microsoft.com/playwright/python:v1.44.0-jammy
-  aarch64: mcr.microsoft.com/playwright/python:v1.44.0-jammy-arm64
+  amd64: mcr.microsoft.com/playwright/python:v1.58.0-jammy
+  aarch64: mcr.microsoft.com/playwright/python:v1.58.0-jammy-arm64

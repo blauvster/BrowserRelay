@@ -93,6 +93,7 @@ The token management API is protected by a separate **admin secret** declared in
 
 ```bash
 curl -sSL https://install.python-poetry.org | python3 -
+export PATH="/root/.local/bin:$PATH"
 ```
 
 Or follow the [official guide](https://python-poetry.org/docs/#installation).

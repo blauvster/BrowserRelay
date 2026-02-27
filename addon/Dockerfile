@@ -5,8 +5,7 @@ FROM ${BUILD_FROM}
 
 # Keep Python output unbuffered so logs appear immediately in the HA log panel.
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+    PYTHONDONTWRITEBYTECODE=1
 
 WORKDIR /app
 
@@ -17,7 +16,8 @@ COPY pyproject.toml README.md ./
 
 RUN poetry config virtualenvs.create false && \
     poetry install --no-root --only main --no-interaction --no-ansi
-
+# ── Install Playwright browsers matching the installed Python package version.
+RUN playwright install chromium
 # ── Copy application source ───────────────────────────────────────────────────
 COPY browser_relay/ ./browser_relay/
 
