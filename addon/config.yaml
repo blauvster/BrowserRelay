@@ -7,7 +7,7 @@ description: >-
 url: "https://github.com/yourusername/browser-relay"
 # Prebuilt image from GHCR – HA pulls this instead of building on-device.
 # {arch} is substituted by the Supervisor (e.g. amd64, aarch64).
-image: "ghcr.io/blauvstet/browser-relay-{arch}"
+image: "ghcr.io/blauvster/browser-relay-{arch}"
 arch:
   - amd64
   - aarch64
