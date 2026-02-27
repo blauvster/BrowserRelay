@@ -1,0 +1,28 @@
+# Enforce LF line endings in the repository for all text files.
+# Shell scripts MUST have LF or the Linux shebang will break.
+* text=auto
+
+# Shell scripts – always LF
+*.sh text eol=lf
+
+# Python
+*.py text eol=lf
+
+# YAML / TOML / JSON
+*.yaml text eol=lf
+*.yml  text eol=lf
+*.toml text eol=lf
+*.json text eol=lf
+
+# Markdown / docs
+*.md   text eol=lf
+
+# Docker
+Dockerfile* text eol=lf
+.dockerignore text eol=lf
+
+# Binaries – no line-ending conversion
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.ico  binary
